@@ -131,3 +131,98 @@ describe('GET /api/games', function () {
     });
 });
 
+/**
+ * Testing search games endpoint
+ */
+describe('POST /api/games/search', function () {
+    it('should return all games', function (done) {
+        request(app)
+            .post('/api/games/search')
+            .send({ platform: '', name: '' })
+            .set('Accept', 'application/json')
+            .set('Content-Type', 'application/json')
+            .expect('Content-Type', /json/)
+            .expect(200)
+            .end((err, result) => {
+                if (err) return done(err);
+                assert.strictEqual(result.body.length, 5);
+                done();
+            });
+    });
+    it('should return ios games', function (done) {
+        request(app)
+            .post('/api/games/search')
+            .send({ platform: 'ios', name: '' })
+            .set('Accept', 'application/json')
+            .set('Content-Type', 'application/json')
+            .expect('Content-Type', /json/)
+            .expect(200)
+            .end((err, result) => {
+                if (err) return done(err);
+                assert.strictEqual(result.body.length, 3);
+                assert.strictEqual(result.body.every(game => game.platform === 'ios'), true)
+                done();
+            });
+    });
+    it('should return android games', function (done) {
+        request(app)
+            .post('/api/games/search')
+            .send({ platform: 'android', name: '' })
+            .set('Accept', 'application/json')
+            .set('Content-Type', 'application/json')
+            .expect('Content-Type', /json/)
+            .expect(200)
+            .end((err, result) => {
+                console.log(result.body)
+                if (err) return done(err);
+                assert.strictEqual(result.body.length, 2);
+                assert.strictEqual(result.body.every(game => game.platform === 'android'), true)
+                done();
+            });
+    });
+
+    it("should return games with 'hel' in name", function (done) {
+        request(app)
+            .post('/api/games/search')
+            .send({ platform: '', name: 'hel' })
+            .set('Accept', 'application/json')
+            .set('Content-Type', 'application/json')
+            .expect('Content-Type', /json/)
+            .expect(200)
+            .end((err, result) => {
+                if (err) return done(err);
+                assert.strictEqual(result.body.length, 2);
+                assert.strictEqual(result.body.every(game => game.name === 'Helix Jump'), true)
+                done();
+            });
+    });
+
+    it("should return empty list", function (done) {
+        request(app)
+            .post('/api/games/search')
+            .send({ platform: '', name: 'unknown' })
+            .set('Accept', 'application/json')
+            .set('Content-Type', 'application/json')
+            .expect('Content-Type', /json/)
+            .expect(200)
+            .end((err, result) => {
+                if (err) return done(err);
+                assert.strictEqual(result.body.length, 0);
+                done();
+            });
+    });
+});
+
+describe('POST /api/games/populate', function () {
+    it('should update database with top100 games from provided JSON data files', function (done) {
+        request(app)
+            .post('/api/games/populate')
+            .set('Accept', 'application/json')
+            .expect(200)
+            .end((err, result) => {
+                if (err) return done(err);
+                assert.strictEqual(result.body.length, 205); // 100 android + 100 ios + 5 already in db
+                done();
+            });
+    });
+});
