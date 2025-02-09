@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const db = require('./models');
+const { Op, where } =  require('sequelize');
 
 const app = express();
 
@@ -51,6 +52,28 @@ app.put('/api/games/:id', (req, res) => {
     });
 });
 
+app.post('/api/games/search', async (req, res) => {
+  const { name, platform } = req.body;
+
+  const whereClause = {};
+  if (name !== '') {
+    whereClause.name = { [Op.like]: `%${name}%` };
+  }
+  if (platform !== '') {
+    whereClause.platform = platform;
+  }
+
+  try {
+    const games = await db.Game.findAll({
+      where: whereClause,
+    });
+
+    res.send(games);
+  } catch (err) {
+    console.log('***Error searching game', JSON.stringify(err));
+    res.status(400).send(err);
+  }
+});
 
 app.listen(3000, () => {
   console.log('Server is up on port 3000');
