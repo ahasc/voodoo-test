@@ -2,6 +2,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const db = require('./models');
 const { Op, where } =  require('sequelize');
+const axios = require('axios');
+const flatten = require('lodash/flatten')
 
 const app = express();
 
@@ -71,6 +73,42 @@ app.post('/api/games/search', async (req, res) => {
     res.send(games);
   } catch (err) {
     console.log('***Error searching game', JSON.stringify(err));
+    res.status(400).send(err);
+  }
+});
+
+app.post('/api/games/populate', async (req, res) => {
+  try {
+    const [androidGames, iosGames] = await Promise.all([
+      axios.get('https://interview-marketing-eng-dev.s3.eu-west-1.amazonaws.com/android.top100.json')
+        .then(res => flatten(res.data)),
+      axios.get('https://interview-marketing-eng-dev.s3.eu-west-1.amazonaws.com/ios.top100.json')
+        .then(res => flatten(res.data)),
+    ]);
+
+    const extractTop100 = (list) => list.sort((a, b) => b.rating - a.rating).slice(0, 100);
+  
+    const androidTop100Games = extractTop100(androidGames); 
+    const iosTop100Games = extractTop100(iosGames);
+
+    const insertRecords = [];
+    for (const game of [...androidTop100Games, ...iosTop100Games]) {
+      insertRecords.push({
+        publisherId: game.publisher_id,
+        name: game.humanized_name,
+        platform: game.os,
+        storeId: game.appId,
+        bundleId: game.bundle_id,
+        appVersion: game.version,
+        isPublished: game.release_date !== null,
+      });
+    }
+
+    await db.Game.bulkCreate(insertRecords);
+
+    res.send();
+  } catch (err) {
+    console.log('***Error populating game', JSON.stringify(err));
     res.status(400).send(err);
   }
 });
